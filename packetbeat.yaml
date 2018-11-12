@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: packetbeat
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: packetbeat
+subjects:
+  - kind: ServiceAccount
+    name: packetbeat
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: packetbeat
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: packetbeat
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+      - pods
+      - services
+      - replicationcontrollers
+      - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+      - daemonsets
+      - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: packetbeat
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: packetbeat
+  template:
+    metadata:
+      labels:
+        k8s-app: packetbeat
+    spec:
+      securityContext:
+        runAsUser: 0
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: packetbeat
+      containers:
+        - name: packetbeat
+          image: docker.elastic.co/beats/packetbeat:6.3.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+          args:
+            - "-c"
+            - "/usr/share/packetbeat/packetbeat.yml"
+            - "-e"
+          env:
+            - name: ELASTICSEARCH_HOST
+              value: "elasticsearch-ingest"
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: KIBANA_HOST
+              value: "kibana.kube-system.svc.cluster.local"
+            - name: KIBANA_PORT
+              value: "5601"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: packetbeat-config
+              mountPath: /usr/share/packetbeat/packetbeat.yml
+              subPath: packetbeat.yml
+              readOnly: true
+      volumes:
+        - name: packetbeat-config
+          configMap:
+            name: packetbeat-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: packetbeat-config
+  namespace: kube-system
+data:
+  packetbeat.yml: |
+    setup:
+      kibana:
+        host: "${KIBANA_HOST}:${KIBANA_PORT}"
+      dashboards:
+        enabled: true
+        index: "packetbeat-*"
+        retry:
+          enabled: true
+          interval: 5
+    packetbeat:
+      interfaces:
+        device: any
+      protocols:
+        - type: dns
+          ports: [53]
+          include_authorities: true
+          include_additionals: true
+        - type: http
+          ports: [80, 8080, 8081, 5000, 8002, 9200, 9300, 6666, 3000, 5601, 9100, 9090, 44134]
+    output:
+      elasticsearch:
+        hosts: ['${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}']

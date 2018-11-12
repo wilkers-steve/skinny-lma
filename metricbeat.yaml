@@ -1,0 +1,257 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metricbeat
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: metricbeat
+subjects:
+  - kind: ServiceAccount
+    name: metricbeat
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: metricbeat
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: metricbeat
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+      - pods
+      - services
+      - replicationcontrollers
+      - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+      - daemonsets
+      - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: metricbeat-node-modules
+  namespace: kube-system
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: metricbeat
+        component: node-modules
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: metricbeat
+      containers:
+        - name: metricbeat
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          image: docker.elastic.co/beats/metricbeat:6.3.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-c"
+            - "/etc/metricbeat.yml"
+            - "-e"
+            - "-system.hostfs=/hostfs"
+          env:
+            - name: ELASTICSEARCH_HOST
+              value: "elasticsearch-ingest.kube-system.svc.cluster.local"
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: KIBANA_HOST
+              value: "kibana.kube-system.svc.cluster.local"
+            - name: KIBANA_PORT
+              value: "5601"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: metricbeat-config
+              mountPath: /etc/metricbeat.yml
+              subPath: metricbeat.yml
+              readOnly: true
+            - name: metricbeat-config
+              mountPath: /usr/share/metricbeat/modules.d/system.yml
+              subPath: system.yml
+              readOnly: true
+            - name: metricbeat-config
+              mountPath: /usr/share/metricbeat/modules.d/kubernetes.yml
+              subPath: daemonset_kubernetes.yml
+              readOnly: true
+            - name: dockersock
+              mountPath: /var/run/docker.sock
+            - name: proc
+              mountPath: /hostfs/proc
+              readOnly: true
+            - name: cgroup
+              mountPath: /hostfs/sys/fs/cgroup
+              readOnly: true
+      volumes:
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+      - name: dockersock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: metricbeat-config
+        configMap:
+          name: metricbeat-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metricbeat-deployment-modules
+  namespace: kube-system
+  labels:
+    k8s-app: metricbeat
+    component: deployment-modules
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: metricbeat
+      component: deployment-modules
+  template:
+    metadata:
+      labels:
+        k8s-app: metricbeat
+        component: deployment-modules
+    spec:
+      serviceAccountName: metricbeat
+      containers:
+        - name: metricbeat
+          securityContext:
+            runAsUser: 0
+          image: docker.elastic.co/beats/metricbeat:6.3.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-c"
+            - "/usr/share/metricbeat/metricbeat.yml"
+            - "-e"
+          env:
+            - name: ELASTICSEARCH_HOST
+              value: "elasticsearch-ingest.kube-system.svc.cluster.local"
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: KIBANA_HOST
+              value: "kibana.kube-system.svc.cluster.local"
+            - name: KIBANA_PORT
+              value: "5601"
+            - name: KUBE_STATE_METRICS_HOST
+              value: "kube-state-metrics"
+            - name: KUBE_STATE_METRICS_PORT
+              value: "8080"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: metricbeat-config
+              mountPath: /usr/share/metricbeat/metricbeat.yml
+              subPath: metricbeat.yml
+              readOnly: true
+            - name: metricbeat-config
+              mountPath: /usr/share/metricbeat/modules.d/kubernetes.yml
+              subPath: deployment_kubernetes.yml
+              readOnly: true
+      volumes:
+        - name: metricbeat-config
+          configMap:
+            name: metricbeat-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metricbeat-config
+  namespace: kube-system
+data:
+  metricbeat.yml: |
+    setup:
+      dashboards:
+        enabled: true
+        index: metricbeat-*
+        retry:
+          enabled: true
+          interval: 5
+      kibana:
+        host: "${KIBANA_HOST}:${KIBANA_PORT}"
+    metricbeat:
+      config:
+        modules:
+          path: ${path.config}/modules.d/*.yml
+          reload:
+            enabled: true
+    output:
+      elasticsearch:
+        hosts: ['${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}']
+  system.yml: |
+    - module: system
+      period: 10s
+      metricsets:
+        - cpu
+        - load
+        - memory
+        - network
+        - process
+        - process_summary
+        - core
+        - diskio
+        - socket
+      processes: ['.*']
+      process.include_top_n:
+        by_cpu: 5
+        by_memory: 5
+    - module: system
+      period: 1m
+      metricsets:
+        - filesystem
+        - fsstat
+      processors:
+      - drop_event.when.regexp:
+          system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
+  daemonset_kubernetes.yml: |
+    - module: kubernetes
+      metricsets:
+        - node
+        - system
+        - pod
+        - container
+        - volume
+      period: 10s
+      hosts: ["localhost:10255"]
+  deployment_kubernetes.yml: |
+    - module: kubernetes
+      metricsets:
+        - state_node
+        - state_deployment
+        - state_replicaset
+        - state_pod
+        - state_container
+        - event
+      period: 10s
+      hosts: ['${KUBE_STATE_METRICS_HOST}:${KUBE_STATE_METRICS_PORT}']
