@@ -288,22 +288,14 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /etc/config
-            - name: prometheus-data
+            - name: storage
               mountPath: /data
       volumes:
         - name: config-volume
           configMap:
             name: prometheus-config
-  volumeClaimTemplates:
-  - metadata:
-      name: prometheus-data
-    spec:
-      storageClassName: general
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: "10Gi"
+        - name: storage
+          emptyDir: {}
 ---
 kind: Service
 apiVersion: v1

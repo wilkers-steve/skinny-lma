@@ -29,6 +29,7 @@ rules:
       - nodes
       - pods
       - services
+      - endpoints
       - replicationcontrollers
       - limitranges
     verbs:
@@ -66,6 +67,39 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: packetbeat
+      initContainers:
+        - name: init
+          image: "quay.io/stackanetes/kubernetes-entrypoint:v0.3.1"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: INTERFACE_NAME
+              value: eth0
+            - name: PATH
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+            - name: DEPENDENCY_SERVICE
+              value: "kube-system:kibana"
+            - name: DEPENDENCY_DAEMONSET
+              value: ""
+            - name: DEPENDENCY_CONTAINER
+              value: ""
+            - name: DEPENDENCY_POD_JSON
+              value: ""
+            - name: COMMAND
+              value: "echo done"
+          command:
+            - kubernetes-entrypoint
+          volumeMounts:
+            []
       containers:
         - name: packetbeat
           image: docker.elastic.co/beats/packetbeat:6.3.1
@@ -81,7 +115,7 @@ spec:
             - "-e"
           env:
             - name: ELASTICSEARCH_HOST
-              value: "elasticsearch-ingest"
+              value: "elasticsearch.kube-system.svc.cluster.local"
             - name: ELASTICSEARCH_PORT
               value: "9200"
             - name: KIBANA_HOST

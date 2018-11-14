@@ -55,6 +55,39 @@ spec:
         k8s-app: kibana
     spec:
       serviceAccount: kibana
+      initContainers:
+        - name: init
+          image: "quay.io/stackanetes/kubernetes-entrypoint:v0.3.1"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: INTERFACE_NAME
+              value: eth0
+            - name: PATH
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+            - name: DEPENDENCY_SERVICE
+              value: "kube-system:elasticsearch"
+            - name: DEPENDENCY_DAEMONSET
+              value: ""
+            - name: DEPENDENCY_CONTAINER
+              value: ""
+            - name: DEPENDENCY_POD_JSON
+              value: ""
+            - name: COMMAND
+              value: "echo done"
+          command:
+            - kubernetes-entrypoint
+          volumeMounts:
+            []
       containers:
         - name: kibana
           image: kibana:6.4.2
@@ -62,9 +95,15 @@ spec:
           ports:
             - name: http
               containerPort: 5601
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 5601
+            initialDelaySeconds: 20
+            periodSeconds: 10
           env:
             - name: ELASTICSEARCH_URL
-              value: "http://elasticsearch-ingest.kube-system.svc.cluster.local:9200/"
+              value: "http://elasticsearch.kube-system.svc.cluster.local:9200/"
           volumeMounts:
             - name: kibana-config
               mountPath: /usr/share/kibana/config/kibana.yml
