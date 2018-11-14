@@ -258,7 +258,7 @@ spec:
         imagePullPolicy: "IfNotPresent"
         command: ["chown", "-R", "65534:65534", "/data"]
         volumeMounts:
-        - name: prometheus-data
+        - name: storage
           mountPath: /data
           subPath: ""
       containers:
