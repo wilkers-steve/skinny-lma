@@ -53,19 +53,19 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: kube-state-metrics
-  namespace: kube-system
+  namespace: monitoring
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kube-state-metrics
-  namespace: kube-system
+  namespace: monitoring
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-state-metrics
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: kube-state-metrics
 spec:
@@ -103,7 +103,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-state-metrics
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: kube-state-metrics
   annotations:

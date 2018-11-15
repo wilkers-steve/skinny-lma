@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: elasticsearch
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
 ---
@@ -13,7 +13,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: elasticsearch
-    namespace: kube-system
+    namespace: monitoring
 roleRef:
   kind: ClusterRole
   name: elasticsearch
@@ -45,7 +45,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: elasticsearch-ingest
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
     component: ingest
@@ -74,7 +74,7 @@ spec:
           - vm.max_map_count=262144
       containers:
         - name: elasticsearch-ingest
-          image: elasticsearch:6.4.2
+          image: docker.elastic.co/elasticsearch/elasticsearch:6.5.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -137,7 +137,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: elasticsearch-master
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
     component: master
@@ -166,7 +166,7 @@ spec:
           - vm.max_map_count=262144
       containers:
         - name: elasticsearch-master
-          image: elasticsearch:6.4.2
+          image: docker.elastic.co/elasticsearch/elasticsearch:6.5.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -221,7 +221,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: elasticsearch-data
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
     component: data
@@ -251,7 +251,7 @@ spec:
           - vm.max_map_count=262144
       containers:
         - name: elasticsearch-data
-          image: elasticsearch:6.4.2
+          image: docker.elastic.co/elasticsearch/elasticsearch:6.5.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -313,7 +313,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: elasticsearch-config
-  namespace: kube-system
+  namespace: monitoring
 data:
   elasticsearch.yml: |
     xpack:
@@ -343,7 +343,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: elasticsearch
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
     component: ingest
@@ -359,7 +359,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: elasticsearch-discovery
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
     component: master
@@ -376,7 +376,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: elasticsearch-data
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: elasticsearch
     component: data

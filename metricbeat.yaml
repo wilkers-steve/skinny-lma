@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: metricbeat
-  namespace: kube-system
+  namespace: monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -11,7 +11,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: metricbeat
-    namespace: kube-system
+    namespace: monitoring
 roleRef:
   kind: ClusterRole
   name: metricbeat
@@ -52,7 +52,7 @@ apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   name: metricbeat-node-modules
-  namespace: kube-system
+  namespace: monitoring
 spec:
   template:
     metadata:
@@ -83,7 +83,7 @@ spec:
             - name: PATH
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
             - name: DEPENDENCY_SERVICE
-              value: "kube-system:kibana"
+              value: "monitoring:kibana"
             - name: DEPENDENCY_DAEMONSET
               value: ""
             - name: DEPENDENCY_CONTAINER
@@ -101,7 +101,7 @@ spec:
           securityContext:
             privileged: true
             runAsUser: 0
-          image: docker.elastic.co/beats/metricbeat:6.3.1
+          image: docker.elastic.co/beats/metricbeat:6.5.0
           imagePullPolicy: IfNotPresent
           args:
             - "-c"
@@ -110,11 +110,11 @@ spec:
             - "-system.hostfs=/hostfs"
           env:
             - name: ELASTICSEARCH_HOST
-              value: "elasticsearch.kube-system.svc.cluster.local"
+              value: "elasticsearch.monitoring.svc.cluster.local"
             - name: ELASTICSEARCH_PORT
               value: "9200"
             - name: KIBANA_HOST
-              value: "kibana.kube-system.svc.cluster.local"
+              value: "kibana.monitoring.svc.cluster.local"
             - name: KIBANA_PORT
               value: "5601"
             - name: POD_NAMESPACE
@@ -160,7 +160,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: metricbeat-deployment-modules
-  namespace: kube-system
+  namespace: monitoring
   labels:
     k8s-app: metricbeat
     component: deployment-modules
@@ -197,7 +197,7 @@ spec:
             - name: PATH
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
             - name: DEPENDENCY_SERVICE
-              value: "kube-system:kibana"
+              value: "monitoring:kibana"
             - name: DEPENDENCY_DAEMONSET
               value: ""
             - name: DEPENDENCY_CONTAINER
@@ -214,7 +214,7 @@ spec:
         - name: metricbeat
           securityContext:
             runAsUser: 0
-          image: docker.elastic.co/beats/metricbeat:6.3.1
+          image: docker.elastic.co/beats/metricbeat:6.5.0
           imagePullPolicy: IfNotPresent
           args:
             - "-c"
@@ -222,11 +222,11 @@ spec:
             - "-e"
           env:
             - name: ELASTICSEARCH_HOST
-              value: "elasticsearch.kube-system.svc.cluster.local"
+              value: "elasticsearch.monitoring.svc.cluster.local"
             - name: ELASTICSEARCH_PORT
               value: "9200"
             - name: KIBANA_HOST
-              value: "kibana.kube-system.svc.cluster.local"
+              value: "kibana.monitoring.svc.cluster.local"
             - name: KIBANA_PORT
               value: "5601"
             - name: KUBE_STATE_METRICS_HOST
@@ -255,7 +255,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: metricbeat-config
-  namespace: kube-system
+  namespace: monitoring
 data:
   metricbeat.yml: |
     setup:

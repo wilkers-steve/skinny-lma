@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: packetbeat
-  namespace: kube-system
+  namespace: monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -11,7 +11,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: packetbeat
-    namespace: kube-system
+    namespace: monitoring
 roleRef:
   kind: ClusterRole
   name: packetbeat
@@ -52,7 +52,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: packetbeat
-  namespace: kube-system
+  namespace: monitoring
 spec:
   selector:
     matchLabels:
@@ -87,7 +87,7 @@ spec:
             - name: PATH
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
             - name: DEPENDENCY_SERVICE
-              value: "kube-system:kibana"
+              value: "monitoring:kibana"
             - name: DEPENDENCY_DAEMONSET
               value: ""
             - name: DEPENDENCY_CONTAINER
@@ -102,7 +102,7 @@ spec:
             []
       containers:
         - name: packetbeat
-          image: docker.elastic.co/beats/packetbeat:6.3.1
+          image: docker.elastic.co/beats/packetbeat:6.5.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -115,11 +115,11 @@ spec:
             - "-e"
           env:
             - name: ELASTICSEARCH_HOST
-              value: "elasticsearch.kube-system.svc.cluster.local"
+              value: "elasticsearch.monitoring.svc.cluster.local"
             - name: ELASTICSEARCH_PORT
               value: "9200"
             - name: KIBANA_HOST
-              value: "kibana.kube-system.svc.cluster.local"
+              value: "kibana.monitoring.svc.cluster.local"
             - name: KIBANA_PORT
               value: "5601"
             - name: NODE_NAME
@@ -140,7 +140,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: packetbeat-config
-  namespace: kube-system
+  namespace: monitoring
 data:
   packetbeat.yml: |
     setup:
