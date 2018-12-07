@@ -134,6 +134,8 @@ data:
         enabled: false
       reporting:
         enabled: false
+      canvas:
+        enabled: false
     elasticsearch:
       pingTimeout: 1500
       preserveHost: true
