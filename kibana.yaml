@@ -124,6 +124,16 @@ data:
     xpack:
       security:
         enabled: false
+      apm:
+        enabled: false
+      graph:
+        enabled: false
+      ml:
+        enabled: false
+      monitoring:
+        enabled: false
+      reporting:
+        enabled: false
     elasticsearch:
       pingTimeout: 1500
       preserveHost: true
