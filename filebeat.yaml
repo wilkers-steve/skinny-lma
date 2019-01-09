@@ -166,6 +166,17 @@ data:
       elasticsearch:
         hosts: ["${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
     filebeat:
+      inputs:
+        - type: log
+          paths:
+            - /var/log/syslog
+          fields:
+            input: syslog
+        - type: log
+          paths:
+            - /var/log/kern.log
+          fields:
+            input: "kern.log"
       config:
         prospectors:
           path: ${path.config}/prospectors.d/*.yml

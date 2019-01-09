@@ -32,6 +32,7 @@ rules:
       - endpoints
       - replicationcontrollers
       - limitranges
+      - events
     verbs:
       - get
       - list
@@ -42,6 +43,14 @@ rules:
       - statefulsets
       - daemonsets
       - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
       - replicasets
     verbs:
       - get
@@ -311,6 +320,8 @@ data:
         - volume
       period: 10s
       hosts: ["localhost:10255"]
+      add_metadata: true
+      in_cluster: true
   deployment_kubernetes.yml: |
     - module: kubernetes
       metricsets:
@@ -322,3 +333,5 @@ data:
         - event
       period: 10s
       hosts: ['${KUBE_STATE_METRICS_HOST}:${KUBE_STATE_METRICS_PORT}']
+      add_metadata: true
+      in_cluster: true
